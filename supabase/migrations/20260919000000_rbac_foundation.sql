@@ -179,6 +179,7 @@ join public.permissions p
     'license.read',
     'license.write',
     'users.read',
+    'users.manage',
     'audit.read',
     'system.read',
     'system.manage'
