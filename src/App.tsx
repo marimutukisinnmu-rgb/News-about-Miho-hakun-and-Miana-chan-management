@@ -157,6 +157,7 @@ function HtmlReviewPanel() {
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginMode, setLoginMode] = useState<"password" | "passkey">("password");
   const [email, setEmail] = useState("");
@@ -203,6 +204,31 @@ export default function App() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setAdminUserId(null);
+
+    if (!session) {
+      return () => { active = false; };
+    }
+
+    void supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active) return;
+        setAdminUserId(!error && data?.role === "admin" ? session.user.id : null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setAdminUserId(null);
+      });
+
+    return () => { active = false; };
+  }, [session]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -362,7 +388,9 @@ export default function App() {
         </div>
       </header>
 
-      <HtmlReviewPanel />\n\n      <section className="grid">
+      {session && adminUserId === session.user.id && <HtmlReviewPanel />}
+
+      <section className="grid">
         <article className="card">
           <h2>🔐 セキュリティ</h2>
           <p>通常ログインと重要データの再認証を分離しています。</p>
