@@ -158,7 +158,6 @@ function HtmlReviewPanel() {
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [profileRole, setProfileRole] = useState<string | null>(null);
-  const [roleLoading, setRoleLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loginMode, setLoginMode] = useState<"password" | "passkey">("password");
   const [email, setEmail] = useState("");
@@ -211,11 +210,9 @@ export default function App() {
     setProfileRole(null);
 
     if (!session) {
-      setRoleLoading(false);
       return () => { active = false; };
     }
 
-    setRoleLoading(true);
     void supabase
       .from("profiles")
       .select("role")
@@ -224,12 +221,10 @@ export default function App() {
       .then(({ data, error }) => {
         if (!active) return;
         setProfileRole(!error && data?.role === "admin" ? "admin" : null);
-        setRoleLoading(false);
       })
       .catch(() => {
         if (!active) return;
         setProfileRole(null);
-        setRoleLoading(false);
       });
 
     return () => { active = false; };
