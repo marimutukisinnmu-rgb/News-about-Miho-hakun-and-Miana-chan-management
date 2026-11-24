@@ -157,7 +157,7 @@ function HtmlReviewPanel() {
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [profileRole, setProfileRole] = useState<string | null>(null);
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginMode, setLoginMode] = useState<"password" | "passkey">("password");
   const [email, setEmail] = useState("");
@@ -207,7 +207,7 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-    setProfileRole(null);
+    setAdminUserId(null);
 
     if (!session) {
       return () => { active = false; };
@@ -220,11 +220,11 @@ export default function App() {
       .maybeSingle()
       .then(({ data, error }) => {
         if (!active) return;
-        setProfileRole(!error && data?.role === "admin" ? "admin" : null);
+        setAdminUserId(!error && data?.role === "admin" ? session.user.id : null);
       })
       .catch(() => {
         if (!active) return;
-        setProfileRole(null);
+        setAdminUserId(null);
       });
 
     return () => { active = false; };
@@ -388,7 +388,7 @@ export default function App() {
         </div>
       </header>
 
-      {profileRole === "admin" && <HtmlReviewPanel />}
+      {session && adminUserId === session.user.id && <HtmlReviewPanel />}
 
       <section className="grid">
         <article className="card">
