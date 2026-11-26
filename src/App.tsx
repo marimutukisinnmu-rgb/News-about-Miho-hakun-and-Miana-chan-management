@@ -22,7 +22,7 @@ type RevenueRow = {
 };
 
 type HtmlRequest = {
-  id: string; nickname: string | null; message: string; source_page: string; submitted_at: string;
+  id: string; nickname: string | null; message: string; source_page: string; requester_user_id: string | null; submitted_at: string;
   html_review_status: "pending" | "approved" | "rejected"; html_review_note: string | null; html_reviewed_at: string | null;
 };
 type HtmlFinding = { code: string; label: string; count: number };
@@ -124,6 +124,8 @@ function HtmlReviewPanel() {
             <button key={item.id} className={selected?.id === item.id ? "html-request active" : "html-request"} onClick={() => void selectRequest(item)}>
               <span className="row"><strong>{item.nickname || "匿名"}</strong><span className={"review-state " + item.html_review_status}>{item.html_review_status === "pending" ? "未判断" : item.html_review_status === "approved" ? "承認済み" : "却下"}</span></span>
               <small>{new Date(item.submitted_at).toLocaleString("ja-JP")}</small>
+              <small>依頼者ID: {item.requester_user_id ?? "未紐付け"}</small>
+              <small>対象ページ: {item.source_page || "不明"}</small>
               <span className="request-preview">{item.message.slice(0, 100).replace("[HTML制作依頼]", "").trim() || "HTML制作依頼"}</span>
             </button>
           ))}
@@ -131,6 +133,11 @@ function HtmlReviewPanel() {
         <div className="html-request-detail">
           {!selected ? <p className="muted">左の一覧から依頼を選択してください。</p> : <>
             <div className="row"><h3>依頼内容</h3><span className={"review-state " + selected.html_review_status}>{selected.html_review_status === "pending" ? "未判断" : selected.html_review_status === "approved" ? "承認済み" : "却下"}</span></div>
+            
+            <div className="muted small">
+              <p>依頼者ID: <span className="request-preview">{selected.requester_user_id ?? "未紐付け"}</span></p>
+              <p>対象ページ: <span className="request-preview">{selected.source_page || "不明"}</span></p>
+            </div>
             <pre className="request-content">{selected.message}</pre>
             <h3>個人情報・秘密情報候補の検査</h3>
             {scanning ? <p className="muted">検査中…</p> : scan ? <>
@@ -157,6 +164,7 @@ function HtmlReviewPanel() {
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginMode, setLoginMode] = useState<"password" | "passkey">("password");
   const [email, setEmail] = useState("");
@@ -203,6 +211,31 @@ export default function App() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setAdminUserId(null);
+
+    if (!session) {
+      return () => { active = false; };
+    }
+
+    void supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active) return;
+        setAdminUserId(!error && data?.role === "admin" ? session.user.id : null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setAdminUserId(null);
+      });
+
+    return () => { active = false; };
+  }, [session]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -362,7 +395,9 @@ export default function App() {
         </div>
       </header>
 
-      <HtmlReviewPanel />\n\n      <section className="grid">
+      {session && adminUserId === session.user.id && <HtmlReviewPanel />}
+
+      <section className="grid">
         <article className="card">
           <h2>🔐 セキュリティ</h2>
           <p>通常ログインと重要データの再認証を分離しています。</p>
